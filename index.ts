@@ -1,4 +1,4 @@
-import { Client, createClient, User } from "./generated";
+import { Client, createClient } from "./generated";
 
 class RailwayClient {
   private API: Client;
@@ -10,28 +10,84 @@ class RailwayClient {
       );
     }
 
+    const headers = {
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+    };
+
     this.API = createClient({
       url: "https://backboard.railway.com/graphql/v2",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-      },
+      headers,
     });
   }
 
-  public async me(): Promise<Partial<User> | undefined> {
+  public async me() {
     try {
       const response = await this.API.query({
         me: {
-          name: true,
-          email: true,
+          projects: {
+            edges: {
+              node: {
+                id: true,
+                name: true,
+                services: {
+                  edges: {
+                    node: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+                plugins: {
+                  edges: {
+                    node: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+                environments: {
+                  edges: {
+                    node: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
-      return response.me;
+      return response;
     } catch (error) {
       throw new Error(error);
     }
   }
+
+  // public async projects(): Promise<unknown | undefined> {
+  //   try {
+  //     const response = await this.API.query({
+  //       projects: {
+  //         __args: {
+  //           userId: "bab1c2c6-2f6f-4d2b-b493-43465abbe583",
+  //         },
+  //         edges: {
+  //           node: {
+  //             name: true,
+  //             id: true,
+  //             updatedAt: true,
+  //           },
+  //         },
+  //       },
+  //     });
+  //
+  //     return response.projects;
+  //   } catch (error) {
+  //     throw new Error(error);
+  //   }
+  // }
 }
 
 export default RailwayClient;
