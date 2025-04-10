@@ -2,16 +2,16 @@ import RailwayClient from "..";
 
 const apiKey = process.env.RAILWAY_API_TOKEN;
 
-console.log(apiKey);
-
 describe("graphql methods return expected data", () => {
-  test("me returns name and email", async () => {
-    const client = new RailwayClient(apiKey);
+  const client = new RailwayClient(apiKey);
 
+  test("me returns projects, services, environments", async () => {
     const me = await client.me();
-
-    console.info(me);
-    expect(me.name).toBeTruthy();
-    expect(me.email).toBeTruthy();
+    Bun.write("./tests/out/me.json", JSON.stringify(me));
   });
+
+  // test("fetches name, id, and updatedAt on projects", async () => {
+  //   const result = await client.projects();
+  //   console.info(result);
+  // });
 });

@@ -1,0 +1,126 @@
+{
+  "me": {
+    "projects": {
+      "edges": [
+        {
+          "node": {
+            "id": "fd72aa73-7ce4-49de-a205-b6638f8ce726",
+            "name": "tonkas.world",
+            "services": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "0d9381bc-d274-4ae0-a429-a652190470d7",
+                    "name": "medusa-backend"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "6b957183-5c87-4b95-a03f-971361370914",
+                    "name": "medusa-pg"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "d16770cf-40e2-4898-b03d-1e4cabdcb0e5",
+                    "name": "Console"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "df2c6a7f-abf0-4d22-bb16-3d920114e0cd",
+                    "name": "Bucket"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "e4b70f89-c520-4627-bb00-76b9aaba68e5",
+                    "name": "Redis"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "e995ba86-b1e6-4b37-82f2-a49d01fce9cb",
+                    "name": "storefront"
+                  }
+                }
+              ]
+            },
+            "plugins": {
+              "edges": []
+            },
+            "environments": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "4e084510-1b72-4d49-a0da-35367483e106",
+                    "name": "production"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "node": {
+            "id": "09dea1b8-41e5-4246-89c7-44b0c86da6e5",
+            "name": "windmill-demo",
+            "services": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "34e2ff5b-74f8-4448-8664-aa14073951ca",
+                    "name": "state"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "5f2ef8bf-a7cb-464f-a1e8-9bce39bd43b4",
+                    "name": "proxy"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "78fb7010-c7f2-41b9-bd32-6aaa99589f3f",
+                    "name": "server"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "9110ead5-48eb-47ee-bc7a-e20b3d57851b",
+                    "name": "worker"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "a48301ca-aa47-4e3d-8080-6408e8209770",
+                    "name": "lsp"
+                  }
+                },
+                {
+                  "node": {
+                    "id": "f76940db-9d6d-482c-84b3-890f8256ae55",
+                    "name": "worker_native"
+                  }
+                }
+              ]
+            },
+            "plugins": {
+              "edges": []
+            },
+            "environments": {
+              "edges": [
+                {
+                  "node": {
+                    "id": "4eef53eb-5553-4deb-b4db-d030b04a3030",
+                    "name": "production"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
