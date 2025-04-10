@@ -1,4 +1,4 @@
-import { Client, createClient } from "./generated";
+import { Client, createClient } from "./client";
 
 class RailwayClient {
   private API: Client;

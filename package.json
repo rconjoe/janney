@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "genql": "genql --endpoint https://backboard.railway.com/graphql/v2 --output ./generated"
+    "genql": "genql --endpoint https://backboard.railway.com/graphql/v2 --output ./client"
   },
   "repository": {
     "type": "git",
