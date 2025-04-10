@@ -1,0 +1,29 @@
+{
+  "name": "janney",
+  "version": "1.0.0",
+  "description": "Railway API client wrapper for common opererations",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "genql": "genql --endpoint https://backboard.railway.com/graphql/v2 --output ./generated"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rconjoe/janney.git"
+  },
+  "keywords": [
+    "railway"
+  ],
+  "author": "rconjoe <root@trog.codes>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rconjoe/janney/issues"
+  },
+  "homepage": "https://github.com/rconjoe/janney#readme",
+  "devDependencies": {
+    "@genql/cli": "^6.3.3",
+    "@types/bun": "^1.2.9",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.14.0"
+  }
+}
