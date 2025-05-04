@@ -5,7 +5,6 @@ type AccessRule {
 enum ActiveFeatureFlag {
   CEPH_VOLUMES
   DEFAULT_TO_RAILPACK
-  METAL_VOLUME_CREATION
   PRIORITY_BOARDING
 }
 
@@ -14,6 +13,7 @@ enum ActiveServiceFeatureFlag {
   COPY_VOLUME_TO_ENVIRONMENT
   LEGACY_CRONS
   PLACEHOLDER
+  VOLUME_MIGRATION_PROGRESS
 }
 
 type AdoptionInfo implements Node {
@@ -205,11 +205,21 @@ type CustomDomainStatus {
 }
 
 type Customer implements Node {
+  """
+  The total amount of credits that have been applied during the current billing period.
+  """
   appliedCredits: Float!
   billingEmail: String
   billingPeriod: BillingPeriod!
+
+  """The total amount of unused credits for the customer."""
   creditBalance: Float!
   credits(after: String, before: String, first: Int, last: Int): CustomerCreditsConnection!
+
+  """
+  The current usage for the customer. This value is cached and may not be up to date.
+  """
+  currentUsage: Float!
   defaultPaymentMethod: PaymentMethod
   defaultPaymentMethodId: String
   hasExhaustedFreePlan: Boolean!
@@ -308,7 +318,7 @@ type Deployment implements Node {
   canRedeploy: Boolean!
   canRollback: Boolean!
   createdAt: DateTime!
-  creator: User
+  creator: DeploymentCreator
 
   """Check if a deployment's instances have all stopped"""
   deploymentStopped: Boolean!
@@ -326,6 +336,13 @@ type Deployment implements Node {
   suggestAddServiceDomain: Boolean!
   updatedAt: DateTime!
   url: String
+}
+
+type DeploymentCreator {
+  avatar: String
+  email: String!
+  id: String!
+  name: String
 }
 
 type DeploymentEvent implements Node {
@@ -466,6 +483,11 @@ input DeploymentTriggerUpdateInput {
 
 scalar DisplayConfig
 
+type DockerComposeImport {
+  errors: [String!]!
+  patch: EnvironmentConfig
+}
+
 interface Domain {
   createdAt: DateTime
   deletedAt: DateTime
@@ -525,6 +547,8 @@ type Environment implements Node {
   variables(after: String, before: String, first: Int, last: Int): EnvironmentVariablesConnection!
   volumeInstances(after: String, before: String, first: Int, last: Int): EnvironmentVolumeInstancesConnection!
 }
+
+scalar EnvironmentConfig
 
 input EnvironmentCreateInput {
   ephemeral: Boolean
@@ -619,10 +643,6 @@ type EnvironmentVolumeInstancesConnectionEdge {
   node: VolumeInstance!
 }
 
-type Errors {
-  errors: [String!]!
-}
-
 """The estimated usage of a single measurement."""
 type EstimatedUsage {
   """The estimated value."""
@@ -681,6 +701,30 @@ type ExternalWorkspace {
 
 input FeatureFlagToggleInput {
   flag: ActiveFeatureFlag!
+}
+
+type FunctionRuntime {
+  """The image of the function runtime"""
+  image: String!
+
+  """The latest version of the function runtime"""
+  latestVersion: FunctionRuntimeVersion!
+
+  """The name of the function runtime"""
+  name: FunctionRuntimeName!
+
+  """The versions of the function runtime"""
+  versions: [FunctionRuntimeVersion!]!
+}
+
+"""Supported function runtime environments"""
+enum FunctionRuntimeName {
+  bun
+}
+
+type FunctionRuntimeVersion {
+  image: String!
+  tag: String!
 }
 
 type GitHubAccess {
@@ -1051,7 +1095,7 @@ type Mutation {
   deploymentTriggerUpdate(id: String!, input: DeploymentTriggerUpdateInput!): DeploymentTrigger!
 
   """Create services and volumes from docker compose"""
-  dockerComposeImport(environmentId: String!, projectId: String!, yaml: String!): Errors!
+  dockerComposeImport(environmentId: String!, projectId: String!, skipStagingPatch: Boolean, yaml: String!): DockerComposeImport!
 
   """Create a new egress gateway association for a service instance"""
   egressGatewayAssociationCreate(input: EgressGatewayCreateInput!): [EgressGateway!]!
@@ -1072,6 +1116,9 @@ type Mutation {
 
   """Deletes an environment."""
   environmentDelete(id: String!): Boolean!
+
+  """Commit the provided patch to the environment."""
+  environmentPatchCommit(commitMessage: String, environmentId: String!, patch: EnvironmentConfig): String!
 
   """Renames an environment."""
   environmentRename(id: String!, input: EnvironmentRenameInput!): Environment!
@@ -1294,6 +1341,11 @@ type Mutation {
   """Updates a service domain."""
   serviceDomainUpdate(input: ServiceDomainUpdateInput!): Boolean!
 
+  """
+  Duplicate a service, including its configuration, variables, and volumes.
+  """
+  serviceDuplicate(environmentId: String!, serviceId: String!): Service! @deprecated(reason: "This API route is used only by the CLI. We plan to remove it in a future version. Please use the UI to duplicate services.")
+
   """Add a feature flag for a service"""
   serviceFeatureFlagAdd(input: ServiceFeatureFlagToggleInput!): Boolean!
 
@@ -1335,7 +1387,7 @@ type Mutation {
   sharedVariableConfigure(input: SharedVariableConfigureInput!): Variable!
 
   """Creates a new TCP proxy for a service instance."""
-  tcpProxyCreate(input: TCPProxyCreateInput!): TCPProxy!
+  tcpProxyCreate(input: TCPProxyCreateInput!): TCPProxy! @deprecated(reason: "Use staged changes and apply them. Creating a TCP proxy with this endpoint requires you to redeploy the service for it to be active.")
 
   """Deletes a TCP proxy by id"""
   tcpProxyDelete(id: String!): Boolean!
@@ -2208,6 +2260,12 @@ type Query {
   """
   externalWorkspaces(projectId: String): [ExternalWorkspace!]!
 
+  """Get information about a specific function runtime"""
+  functionRuntime(name: FunctionRuntimeName!): FunctionRuntime!
+
+  """List available function runtimes"""
+  functionRuntimes: [FunctionRuntime!]!
+
   """Checks if user has access to GitHub repository"""
   gitHubRepoAccessAvailable(fullRepoName: String!): GitHubAccess!
 
@@ -2812,6 +2870,14 @@ input RegistryCredentialsInput {
   username: String!
 }
 
+enum ReplicateVolumeInstanceStatus {
+  COMPLETED
+  FAILED
+  INITIATED
+  TRANSFERRING
+  UNRECOGNIZED
+}
+
 input ResetPluginCredentialsInput {
   environmentId: String!
 }
@@ -3157,6 +3223,9 @@ type Subscription {
     limit: Int
     pluginId: String!
   ): [Log!]!
+
+  """Subscribe to migration progress updates for a volume"""
+  replicationProgress(volumeInstanceId: String!): VolumeReplicationProgressUpdate!
 }
 
 type SubscriptionDiscount {
@@ -3817,6 +3886,34 @@ input VolumeInstanceUpdateInput {
   The type of the volume instance. If not provided, the type will not be updated.
   """
   type: VolumeInstanceType
+}
+
+type VolumeReplicationProgressUpdate {
+  bytesTransferred: BigInt!
+  currentSnapshot: VolumeSnapshotReplicationProgressUpdate!
+  error: String
+  estimatedTimeRemainingMs: BigInt
+  nbSnapshots: Int!
+  percentComplete: Float!
+  snapshotsSizes: [BigInt!]!
+  status: ReplicateVolumeInstanceStatus!
+  totalBytes: BigInt!
+  transferRateMbps: Float
+}
+
+type VolumeSnapshotReplicationProgressUpdate {
+  bytesTransferred: BigInt!
+  compressedBytesTransferred: BigInt!
+  compressedTransferRateMbps: Float
+  elapsedMs: Int!
+  error: String
+  estimatedTimeRemainingMs: BigInt
+  index: Int!
+  percentComplete: Float!
+  startedAt: DateTime
+  status: ReplicateVolumeInstanceStatus!
+  totalBytes: BigInt!
+  transferRateMbps: Float
 }
 
 enum VolumeState {

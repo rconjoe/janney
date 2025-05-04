@@ -10,6 +10,7 @@ export type Scalars = {
     DateTime: any,
     DeploymentMeta: any,
     DisplayConfig: any,
+    EnvironmentConfig: any,
     EnvironmentVariables: any,
     Float: number,
     ID: string,
@@ -32,9 +33,9 @@ export interface AccessRule {
     __typename: 'AccessRule'
 }
 
-export type ActiveFeatureFlag = 'CEPH_VOLUMES' | 'DEFAULT_TO_RAILPACK' | 'METAL_VOLUME_CREATION' | 'PRIORITY_BOARDING'
+export type ActiveFeatureFlag = 'CEPH_VOLUMES' | 'DEFAULT_TO_RAILPACK' | 'PRIORITY_BOARDING'
 
-export type ActiveServiceFeatureFlag = 'BETTER_CRON_WORKFLOW' | 'COPY_VOLUME_TO_ENVIRONMENT' | 'LEGACY_CRONS' | 'PLACEHOLDER'
+export type ActiveServiceFeatureFlag = 'BETTER_CRON_WORKFLOW' | 'COPY_VOLUME_TO_ENVIRONMENT' | 'LEGACY_CRONS' | 'PLACEHOLDER' | 'VOLUME_MIGRATION_PROGRESS'
 
 export interface AdoptionInfo {
     adoptionLevel: (Scalars['Float'] | null)
@@ -183,11 +184,15 @@ export interface CustomDomainStatus {
 }
 
 export interface Customer {
+    /** The total amount of credits that have been applied during the current billing period. */
     appliedCredits: Scalars['Float']
     billingEmail: (Scalars['String'] | null)
     billingPeriod: BillingPeriod
+    /** The total amount of unused credits for the customer. */
     creditBalance: Scalars['Float']
     credits: CustomerCreditsConnection
+    /** The current usage for the customer. This value is cached and may not be up to date. */
+    currentUsage: Scalars['Float']
     defaultPaymentMethod: (PaymentMethod | null)
     defaultPaymentMethodId: (Scalars['String'] | null)
     hasExhaustedFreePlan: Scalars['Boolean']
@@ -271,7 +276,7 @@ export interface Deployment {
     canRedeploy: Scalars['Boolean']
     canRollback: Scalars['Boolean']
     createdAt: Scalars['DateTime']
-    creator: (User | null)
+    creator: (DeploymentCreator | null)
     /** Check if a deployment's instances have all stopped */
     deploymentStopped: Scalars['Boolean']
     environment: Environment
@@ -289,6 +294,14 @@ export interface Deployment {
     updatedAt: Scalars['DateTime']
     url: (Scalars['String'] | null)
     __typename: 'Deployment'
+}
+
+export interface DeploymentCreator {
+    avatar: (Scalars['String'] | null)
+    email: Scalars['String']
+    id: Scalars['String']
+    name: (Scalars['String'] | null)
+    __typename: 'DeploymentCreator'
 }
 
 export interface DeploymentEvent {
@@ -350,6 +363,12 @@ export interface DeploymentTrigger {
     serviceId: (Scalars['String'] | null)
     validCheckSuites: Scalars['Int']
     __typename: 'DeploymentTrigger'
+}
+
+export interface DockerComposeImport {
+    errors: Scalars['String'][]
+    patch: (Scalars['EnvironmentConfig'] | null)
+    __typename: 'DockerComposeImport'
 }
 
 export type Domain = (CustomDomain | ServiceDomain) & { __isUnion?: true }
@@ -464,11 +483,6 @@ export interface EnvironmentVolumeInstancesConnectionEdge {
     __typename: 'EnvironmentVolumeInstancesConnectionEdge'
 }
 
-export interface Errors {
-    errors: Scalars['String'][]
-    __typename: 'Errors'
-}
-
 
 /** The estimated usage of a single measurement. */
 export interface EstimatedUsage {
@@ -508,6 +522,28 @@ export interface ExternalWorkspace {
     supportTierOverride: (Scalars['String'] | null)
     teamId: (Scalars['String'] | null)
     __typename: 'ExternalWorkspace'
+}
+
+export interface FunctionRuntime {
+    /** The image of the function runtime */
+    image: Scalars['String']
+    /** The latest version of the function runtime */
+    latestVersion: FunctionRuntimeVersion
+    /** The name of the function runtime */
+    name: FunctionRuntimeName
+    /** The versions of the function runtime */
+    versions: FunctionRuntimeVersion[]
+    __typename: 'FunctionRuntime'
+}
+
+
+/** Supported function runtime environments */
+export type FunctionRuntimeName = 'bun'
+
+export interface FunctionRuntimeVersion {
+    image: Scalars['String']
+    tag: Scalars['String']
+    __typename: 'FunctionRuntimeVersion'
 }
 
 export interface GitHubAccess {
@@ -769,7 +805,7 @@ export interface Mutation {
     /** Updates a deployment trigger. */
     deploymentTriggerUpdate: DeploymentTrigger
     /** Create services and volumes from docker compose */
-    dockerComposeImport: Errors
+    dockerComposeImport: DockerComposeImport
     /** Create a new egress gateway association for a service instance */
     egressGatewayAssociationCreate: EgressGateway[]
     /** Clear all egress gateway associations for a service instance */
@@ -782,6 +818,8 @@ export interface Mutation {
     environmentCreate: Environment
     /** Deletes an environment. */
     environmentDelete: Scalars['Boolean']
+    /** Commit the provided patch to the environment. */
+    environmentPatchCommit: Scalars['String']
     /** Renames an environment. */
     environmentRename: Environment
     /** Deploys all connected triggers for an environment. */
@@ -923,6 +961,11 @@ export interface Mutation {
     serviceDomainDelete: Scalars['Boolean']
     /** Updates a service domain. */
     serviceDomainUpdate: Scalars['Boolean']
+    /**
+     * @deprecated This API route is used only by the CLI. We plan to remove it in a future version. Please use the UI to duplicate services.
+     * Duplicate a service, including its configuration, variables, and volumes.
+     */
+    serviceDuplicate: Service
     /** Add a feature flag for a service */
     serviceFeatureFlagAdd: Scalars['Boolean']
     /** Remove a feature flag for a service */
@@ -945,7 +988,10 @@ export interface Mutation {
     sessionDelete: Scalars['Boolean']
     /** Configure a shared variable. */
     sharedVariableConfigure: Variable
-    /** Creates a new TCP proxy for a service instance. */
+    /**
+     * @deprecated Use staged changes and apply them. Creating a TCP proxy with this endpoint requires you to redeploy the service for it to be active.
+     * Creates a new TCP proxy for a service instance.
+     */
     tcpProxyCreate: TCPProxy
     /** Deletes a TCP proxy by id */
     tcpProxyDelete: Scalars['Boolean']
@@ -1507,6 +1553,10 @@ export interface Query {
     events: QueryEventsConnection
     /** Get the workspaces the user doesn't belong to, but needs access (like when invited to a project) */
     externalWorkspaces: ExternalWorkspace[]
+    /** Get information about a specific function runtime */
+    functionRuntime: FunctionRuntime
+    /** List available function runtimes */
+    functionRuntimes: FunctionRuntime[]
     /** Checks if user has access to GitHub repository */
     gitHubRepoAccessAvailable: GitHubAccess
     /** Check if a repo name is available */
@@ -1947,6 +1997,8 @@ export interface RegionDeploymentConstraints {
 
 export type RegistrationStatus = 'ONBOARDED' | 'REGISTERED' | 'WAITLISTED'
 
+export type ReplicateVolumeInstanceStatus = 'COMPLETED' | 'FAILED' | 'INITIATED' | 'TRANSFERRING' | 'UNRECOGNIZED'
+
 export interface ResourceAccess {
     project: AccessRule
     __typename: 'ResourceAccess'
@@ -2109,6 +2161,8 @@ export interface Subscription {
     httpLogs: HttpLog[]
     /** Stream logs for a plugin */
     pluginLogs: Log[]
+    /** Subscribe to migration progress updates for a volume */
+    replicationProgress: VolumeReplicationProgressUpdate
     __typename: 'Subscription'
 }
 
@@ -2549,6 +2603,36 @@ export type VolumeInstanceBackupScheduleKind = 'DAILY' | 'MONTHLY' | 'WEEKLY'
 
 export type VolumeInstanceType = 'CLOUD' | 'METAL'
 
+export interface VolumeReplicationProgressUpdate {
+    bytesTransferred: Scalars['BigInt']
+    currentSnapshot: VolumeSnapshotReplicationProgressUpdate
+    error: (Scalars['String'] | null)
+    estimatedTimeRemainingMs: (Scalars['BigInt'] | null)
+    nbSnapshots: Scalars['Int']
+    percentComplete: Scalars['Float']
+    snapshotsSizes: Scalars['BigInt'][]
+    status: ReplicateVolumeInstanceStatus
+    totalBytes: Scalars['BigInt']
+    transferRateMbps: (Scalars['Float'] | null)
+    __typename: 'VolumeReplicationProgressUpdate'
+}
+
+export interface VolumeSnapshotReplicationProgressUpdate {
+    bytesTransferred: Scalars['BigInt']
+    compressedBytesTransferred: Scalars['BigInt']
+    compressedTransferRateMbps: (Scalars['Float'] | null)
+    elapsedMs: Scalars['Int']
+    error: (Scalars['String'] | null)
+    estimatedTimeRemainingMs: (Scalars['BigInt'] | null)
+    index: Scalars['Int']
+    percentComplete: Scalars['Float']
+    startedAt: (Scalars['DateTime'] | null)
+    status: ReplicateVolumeInstanceStatus
+    totalBytes: Scalars['BigInt']
+    transferRateMbps: (Scalars['Float'] | null)
+    __typename: 'VolumeSnapshotReplicationProgressUpdate'
+}
+
 export type VolumeState = 'DELETED' | 'DELETING' | 'ERROR' | 'MIGRATING' | 'MIGRATION_PENDING' | 'READY' | 'RESTORING' | 'UPDATING'
 
 export interface VolumeVolumeInstancesConnection {
@@ -2777,11 +2861,15 @@ export interface CustomDomainStatusGenqlSelection{
 }
 
 export interface CustomerGenqlSelection{
+    /** The total amount of credits that have been applied during the current billing period. */
     appliedCredits?: boolean | number
     billingEmail?: boolean | number
     billingPeriod?: BillingPeriodGenqlSelection
+    /** The total amount of unused credits for the customer. */
     creditBalance?: boolean | number
     credits?: (CustomerCreditsConnectionGenqlSelection & { __args?: {after?: (Scalars['String'] | null), before?: (Scalars['String'] | null), first?: (Scalars['Int'] | null), last?: (Scalars['Int'] | null)} })
+    /** The current usage for the customer. This value is cached and may not be up to date. */
+    currentUsage?: boolean | number
     defaultPaymentMethod?: PaymentMethodGenqlSelection
     defaultPaymentMethodId?: boolean | number
     hasExhaustedFreePlan?: boolean | number
@@ -2865,7 +2953,7 @@ export interface DeploymentGenqlSelection{
     canRedeploy?: boolean | number
     canRollback?: boolean | number
     createdAt?: boolean | number
-    creator?: UserGenqlSelection
+    creator?: DeploymentCreatorGenqlSelection
     /** Check if a deployment's instances have all stopped */
     deploymentStopped?: boolean | number
     environment?: EnvironmentGenqlSelection
@@ -2882,6 +2970,15 @@ export interface DeploymentGenqlSelection{
     suggestAddServiceDomain?: boolean | number
     updatedAt?: boolean | number
     url?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface DeploymentCreatorGenqlSelection{
+    avatar?: boolean | number
+    email?: boolean | number
+    id?: boolean | number
+    name?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -2960,6 +3057,13 @@ export interface DeploymentTriggerGenqlSelection{
 export interface DeploymentTriggerCreateInput {branch: Scalars['String'],checkSuites?: (Scalars['Boolean'] | null),environmentId: Scalars['String'],projectId: Scalars['String'],provider: Scalars['String'],repository: Scalars['String'],rootDirectory?: (Scalars['String'] | null),serviceId: Scalars['String']}
 
 export interface DeploymentTriggerUpdateInput {branch?: (Scalars['String'] | null),checkSuites?: (Scalars['Boolean'] | null),repository?: (Scalars['String'] | null),rootDirectory?: (Scalars['String'] | null)}
+
+export interface DockerComposeImportGenqlSelection{
+    errors?: boolean | number
+    patch?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
 
 export interface DomainGenqlSelection{
     createdAt?: boolean | number
@@ -3119,12 +3223,6 @@ export interface EnvironmentVolumeInstancesConnectionEdgeGenqlSelection{
     __scalar?: boolean | number
 }
 
-export interface ErrorsGenqlSelection{
-    errors?: boolean | number
-    __typename?: boolean | number
-    __scalar?: boolean | number
-}
-
 
 /** The estimated usage of a single measurement. */
 export interface EstimatedUsageGenqlSelection{
@@ -3180,6 +3278,26 @@ export interface ExternalWorkspaceGenqlSelection{
 }
 
 export interface FeatureFlagToggleInput {flag: ActiveFeatureFlag}
+
+export interface FunctionRuntimeGenqlSelection{
+    /** The image of the function runtime */
+    image?: boolean | number
+    /** The latest version of the function runtime */
+    latestVersion?: FunctionRuntimeVersionGenqlSelection
+    /** The name of the function runtime */
+    name?: boolean | number
+    /** The versions of the function runtime */
+    versions?: FunctionRuntimeVersionGenqlSelection
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface FunctionRuntimeVersionGenqlSelection{
+    image?: boolean | number
+    tag?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
 
 export interface GitHubAccessGenqlSelection{
     hasAccess?: boolean | number
@@ -3459,7 +3577,7 @@ export interface MutationGenqlSelection{
     /** Updates a deployment trigger. */
     deploymentTriggerUpdate?: (DeploymentTriggerGenqlSelection & { __args: {id: Scalars['String'], input: DeploymentTriggerUpdateInput} })
     /** Create services and volumes from docker compose */
-    dockerComposeImport?: (ErrorsGenqlSelection & { __args: {environmentId: Scalars['String'], projectId: Scalars['String'], yaml: Scalars['String']} })
+    dockerComposeImport?: (DockerComposeImportGenqlSelection & { __args: {environmentId: Scalars['String'], projectId: Scalars['String'], skipStagingPatch?: (Scalars['Boolean'] | null), yaml: Scalars['String']} })
     /** Create a new egress gateway association for a service instance */
     egressGatewayAssociationCreate?: (EgressGatewayGenqlSelection & { __args: {input: EgressGatewayCreateInput} })
     /** Clear all egress gateway associations for a service instance */
@@ -3472,6 +3590,8 @@ export interface MutationGenqlSelection{
     environmentCreate?: (EnvironmentGenqlSelection & { __args: {input: EnvironmentCreateInput} })
     /** Deletes an environment. */
     environmentDelete?: { __args: {id: Scalars['String']} }
+    /** Commit the provided patch to the environment. */
+    environmentPatchCommit?: { __args: {commitMessage?: (Scalars['String'] | null), environmentId: Scalars['String'], patch?: (Scalars['EnvironmentConfig'] | null)} }
     /** Renames an environment. */
     environmentRename?: (EnvironmentGenqlSelection & { __args: {id: Scalars['String'], input: EnvironmentRenameInput} })
     /** Deploys all connected triggers for an environment. */
@@ -3615,6 +3735,11 @@ export interface MutationGenqlSelection{
     serviceDomainDelete?: { __args: {id: Scalars['String']} }
     /** Updates a service domain. */
     serviceDomainUpdate?: { __args: {input: ServiceDomainUpdateInput} }
+    /**
+     * @deprecated This API route is used only by the CLI. We plan to remove it in a future version. Please use the UI to duplicate services.
+     * Duplicate a service, including its configuration, variables, and volumes.
+     */
+    serviceDuplicate?: (ServiceGenqlSelection & { __args: {environmentId: Scalars['String'], serviceId: Scalars['String']} })
     /** Add a feature flag for a service */
     serviceFeatureFlagAdd?: { __args: {input: ServiceFeatureFlagToggleInput} }
     /** Remove a feature flag for a service */
@@ -3639,7 +3764,10 @@ export interface MutationGenqlSelection{
     sessionDelete?: { __args: {id: Scalars['String']} }
     /** Configure a shared variable. */
     sharedVariableConfigure?: (VariableGenqlSelection & { __args: {input: SharedVariableConfigureInput} })
-    /** Creates a new TCP proxy for a service instance. */
+    /**
+     * @deprecated Use staged changes and apply them. Creating a TCP proxy with this endpoint requires you to redeploy the service for it to be active.
+     * Creates a new TCP proxy for a service instance.
+     */
     tcpProxyCreate?: (TCPProxyGenqlSelection & { __args: {input: TCPProxyCreateInput} })
     /** Deletes a TCP proxy by id */
     tcpProxyDelete?: { __args: {id: Scalars['String']} }
@@ -4392,6 +4520,10 @@ export interface QueryGenqlSelection{
     events?: (QueryEventsConnectionGenqlSelection & { __args: {after?: (Scalars['String'] | null), before?: (Scalars['String'] | null), environmentId?: (Scalars['String'] | null), filter?: (EventFilterInput | null), first?: (Scalars['Int'] | null), last?: (Scalars['Int'] | null), projectId: Scalars['String']} })
     /** Get the workspaces the user doesn't belong to, but needs access (like when invited to a project) */
     externalWorkspaces?: (ExternalWorkspaceGenqlSelection & { __args?: {projectId?: (Scalars['String'] | null)} })
+    /** Get information about a specific function runtime */
+    functionRuntime?: (FunctionRuntimeGenqlSelection & { __args: {name: FunctionRuntimeName} })
+    /** List available function runtimes */
+    functionRuntimes?: FunctionRuntimeGenqlSelection
     /** Checks if user has access to GitHub repository */
     gitHubRepoAccessAvailable?: (GitHubAccessGenqlSelection & { __args: {fullRepoName: Scalars['String']} })
     /** Check if a repo name is available */
@@ -5165,6 +5297,8 @@ export interface SubscriptionGenqlSelection{
     filter?: (Scalars['String'] | null), 
     /** Limit the number of logs returned (defaults 100, max 5000) */
     limit?: (Scalars['Int'] | null), pluginId: Scalars['String']} })
+    /** Subscribe to migration progress updates for a volume */
+    replicationProgress?: (VolumeReplicationProgressUpdateGenqlSelection & { __args: {volumeInstanceId: Scalars['String']} })
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -5700,6 +5834,38 @@ state?: (VolumeState | null),
 /** The type of the volume instance. If not provided, the type will not be updated. */
 type?: (VolumeInstanceType | null)}
 
+export interface VolumeReplicationProgressUpdateGenqlSelection{
+    bytesTransferred?: boolean | number
+    currentSnapshot?: VolumeSnapshotReplicationProgressUpdateGenqlSelection
+    error?: boolean | number
+    estimatedTimeRemainingMs?: boolean | number
+    nbSnapshots?: boolean | number
+    percentComplete?: boolean | number
+    snapshotsSizes?: boolean | number
+    status?: boolean | number
+    totalBytes?: boolean | number
+    transferRateMbps?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface VolumeSnapshotReplicationProgressUpdateGenqlSelection{
+    bytesTransferred?: boolean | number
+    compressedBytesTransferred?: boolean | number
+    compressedTransferRateMbps?: boolean | number
+    elapsedMs?: boolean | number
+    error?: boolean | number
+    estimatedTimeRemainingMs?: boolean | number
+    index?: boolean | number
+    percentComplete?: boolean | number
+    startedAt?: boolean | number
+    status?: boolean | number
+    totalBytes?: boolean | number
+    transferRateMbps?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface VolumeUpdateInput {
 /** The name of the volume */
 name?: (Scalars['String'] | null)}
@@ -5939,6 +6105,14 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
     
 
 
+    const DeploymentCreator_possibleTypes: string[] = ['DeploymentCreator']
+    export const isDeploymentCreator = (obj?: { __typename?: any } | null): obj is DeploymentCreator => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isDeploymentCreator"')
+      return DeploymentCreator_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
     const DeploymentEvent_possibleTypes: string[] = ['DeploymentEvent']
     export const isDeploymentEvent = (obj?: { __typename?: any } | null): obj is DeploymentEvent => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isDeploymentEvent"')
@@ -5983,6 +6157,14 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
     export const isDeploymentTrigger = (obj?: { __typename?: any } | null): obj is DeploymentTrigger => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isDeploymentTrigger"')
       return DeploymentTrigger_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const DockerComposeImport_possibleTypes: string[] = ['DockerComposeImport']
+    export const isDockerComposeImport = (obj?: { __typename?: any } | null): obj is DockerComposeImport => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isDockerComposeImport"')
+      return DockerComposeImport_possibleTypes.includes(obj.__typename)
     }
     
 
@@ -6115,14 +6297,6 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
     
 
 
-    const Errors_possibleTypes: string[] = ['Errors']
-    export const isErrors = (obj?: { __typename?: any } | null): obj is Errors => {
-      if (!obj?.__typename) throw new Error('__typename is missing in "isErrors"')
-      return Errors_possibleTypes.includes(obj.__typename)
-    }
-    
-
-
     const EstimatedUsage_possibleTypes: string[] = ['EstimatedUsage']
     export const isEstimatedUsage = (obj?: { __typename?: any } | null): obj is EstimatedUsage => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isEstimatedUsage"')
@@ -6143,6 +6317,22 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
     export const isExternalWorkspace = (obj?: { __typename?: any } | null): obj is ExternalWorkspace => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isExternalWorkspace"')
       return ExternalWorkspace_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FunctionRuntime_possibleTypes: string[] = ['FunctionRuntime']
+    export const isFunctionRuntime = (obj?: { __typename?: any } | null): obj is FunctionRuntime => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFunctionRuntime"')
+      return FunctionRuntime_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const FunctionRuntimeVersion_possibleTypes: string[] = ['FunctionRuntimeVersion']
+    export const isFunctionRuntimeVersion = (obj?: { __typename?: any } | null): obj is FunctionRuntimeVersion => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isFunctionRuntimeVersion"')
+      return FunctionRuntimeVersion_possibleTypes.includes(obj.__typename)
     }
     
 
@@ -7515,6 +7705,22 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
     
 
 
+    const VolumeReplicationProgressUpdate_possibleTypes: string[] = ['VolumeReplicationProgressUpdate']
+    export const isVolumeReplicationProgressUpdate = (obj?: { __typename?: any } | null): obj is VolumeReplicationProgressUpdate => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isVolumeReplicationProgressUpdate"')
+      return VolumeReplicationProgressUpdate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const VolumeSnapshotReplicationProgressUpdate_possibleTypes: string[] = ['VolumeSnapshotReplicationProgressUpdate']
+    export const isVolumeSnapshotReplicationProgressUpdate = (obj?: { __typename?: any } | null): obj is VolumeSnapshotReplicationProgressUpdate => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isVolumeSnapshotReplicationProgressUpdate"')
+      return VolumeSnapshotReplicationProgressUpdate_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
     const VolumeVolumeInstancesConnection_possibleTypes: string[] = ['VolumeVolumeInstancesConnection']
     export const isVolumeVolumeInstancesConnection = (obj?: { __typename?: any } | null): obj is VolumeVolumeInstancesConnection => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isVolumeVolumeInstancesConnection"')
@@ -7573,7 +7779,6 @@ export interface customerTogglePayoutsToCreditsInput {isWithdrawingToCredits: Sc
 export const enumActiveFeatureFlag = {
    CEPH_VOLUMES: 'CEPH_VOLUMES' as const,
    DEFAULT_TO_RAILPACK: 'DEFAULT_TO_RAILPACK' as const,
-   METAL_VOLUME_CREATION: 'METAL_VOLUME_CREATION' as const,
    PRIORITY_BOARDING: 'PRIORITY_BOARDING' as const
 }
 
@@ -7581,7 +7786,8 @@ export const enumActiveServiceFeatureFlag = {
    BETTER_CRON_WORKFLOW: 'BETTER_CRON_WORKFLOW' as const,
    COPY_VOLUME_TO_ENVIRONMENT: 'COPY_VOLUME_TO_ENVIRONMENT' as const,
    LEGACY_CRONS: 'LEGACY_CRONS' as const,
-   PLACEHOLDER: 'PLACEHOLDER' as const
+   PLACEHOLDER: 'PLACEHOLDER' as const,
+   VOLUME_MIGRATION_PROGRESS: 'VOLUME_MIGRATION_PROGRESS' as const
 }
 
 export const enumBuilder = {
@@ -7684,6 +7890,10 @@ export const enumDeploymentStatus = {
    SLEEPING: 'SLEEPING' as const,
    SUCCESS: 'SUCCESS' as const,
    WAITING: 'WAITING' as const
+}
+
+export const enumFunctionRuntimeName = {
+   bun: 'bun' as const
 }
 
 export const enumIncidentStatus = {
@@ -7795,6 +8005,14 @@ export const enumRegistrationStatus = {
    ONBOARDED: 'ONBOARDED' as const,
    REGISTERED: 'REGISTERED' as const,
    WAITLISTED: 'WAITLISTED' as const
+}
+
+export const enumReplicateVolumeInstanceStatus = {
+   COMPLETED: 'COMPLETED' as const,
+   FAILED: 'FAILED' as const,
+   INITIATED: 'INITIATED' as const,
+   TRANSFERRING: 'TRANSFERRING' as const,
+   UNRECOGNIZED: 'UNRECOGNIZED' as const
 }
 
 export const enumResourceOwnerType = {
